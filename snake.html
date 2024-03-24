@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Glove Worm</title>
+<style>
+    body {
+        background-color: black;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        margin: 0;
+        color: white;
+        font-family: Arial, sans-serif;
+    }
+    canvas {
+        border: 2px solid white;
+        margin-bottom: 20px;
+    }
+    button {
+        padding: 10px 20px;
+        font-size: 16px;
+        background-color: blue;
+        color: white;
+        border: none;
+        cursor: pointer;
+    }
+    #scoreboard {
+        border-collapse: collapse;
+        width: 300px;
+    }
+    #scoreboard th, #scoreboard td {
+        border: 1px solid white;
+        padding: 8px;
+        color: white;
+        text-align: center;
+    }
+    #scoreboard th {
+        background-color: blue;
+    }
+    #scoreboard tr:nth-child(even) {
+        background-color: #555;
+    }
+    #scoreboard tr:hover {
+        background-color: #333;
+    }
+    #scoreForm {
+        display: none;
+        margin-top: 20px;
+    }
+    #scoreForm input[type="text"] {
+        padding: 5px;
+        font-size: 16px;
+    }
+    #scoreForm input[type="submit"] {
+        padding: 5px 10px;
+        font-size: 16px;
+        background-color: blue;
+        color: white;
+        border: none;
+        cursor: pointer;
+    }
+</style>
+</head>
+<body>
+<canvas id="gameCanvas" width="400" height="400"></canvas>
+<button id="startButton">Oyna</button>
+<table id="scoreboard">
+    <thead>
+        <tr>
+            <th>Rank</th>
+            <th>Name</th>
+            <th>Score</th>
+        </tr>
+    </thead>
+    <tbody id="scoreboardBody">
+    </tbody>
+</table>
+
+<div id="scoreForm">
+    <form id="form">
+        <label for="playerName">Adınızı girin:</label>
+        <input type="text" id="playerName" name="playerName" required>
+        <input type="submit" value="Gönder">
+    </form>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    const startButton = document.getElementById("startButton");
+    const scoreboardBody = document.getElementById("scoreboardBody");
+    const scoreForm = document.getElementById("scoreForm");
+    const form = document.getElementById("form");
+    const playerNameInput = document.getElementById("playerName");
+    
+    const GRID_SIZE = 20;
+    const CANVAS_SIZE = 400;
+    const SPEED = 200;
+    
+    let worm;
+    let dx;
+    let dy;
+    let glove;
+    let score = 0;
+    let highScores = [];
+    let gameRunning = false;
+    let gameInterval;
+    
+    function gameLoop() {
+        clearCanvas();
+        drawGlove();
+        moveWorm();
+        drawWorm();
+        checkCollision();
+        updateScore();
+    }
+    
+    startButton.addEventListener("click", function() {
+        gameRunning = true;
+        startButton.style.display = "none";
+        initGame();
+        gameInterval = setInterval(gameLoop, SPEED);
+    });
+    
+    function initGame() {
+        worm = [{ x: 10, y: 10 }];
+        dx = 1;
+        dy = 0;
+        score = 0;
+        generateNewGlove();
+    }
+    
+    function clearCanvas() {
+        ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+    }
+    
+    function drawWorm() {
+        ctx.fillStyle = "white";
+        worm.forEach(segment => {
+            ctx.fillRect(segment.x * GRID_SIZE, segment.y * GRID_SIZE, GRID_SIZE, GRID_SIZE);
+        });
+    }
+    
+    function moveWorm() {
+        const head = { x: worm[0].x + dx, y: worm[0].y + dy };
+        worm.unshift(head);
+        if (head.x === glove.x && head.y === glove.y) {
+            score++;
+            generateNewGlove();
+        } else {
+            worm.pop();
+        }
+    }
+    
+    function drawGlove() {
+        ctx.fillStyle = "blue";
+        ctx.fillRect(glove.x * GRID_SIZE, glove.y * GRID_SIZE, GRID_SIZE, GRID_SIZE);
+    }
+    
+    function generateNewGlove() {
+        glove = { x: Math.floor(Math.random() * (CANVAS_SIZE / GRID_SIZE)), y: Math.floor(Math.random() * (CANVAS_SIZE / GRID_SIZE)), };
+}
+
+function checkCollision() {
+    const head = worm[0];
+    if (head.x < 0 || head.x >= CANVAS_SIZE / GRID_SIZE || head.y < 0 || head.y >= CANVAS_SIZE / GRID_SIZE || isWormCollision()) {
+        gameOver();
+    }
+}
+
+function isWormCollision() {
+    const head = worm[0];
+    return worm.slice(1).some(segment => segment.x === head.x && segment.y === head.y);
+}
+
+function updateScore() {
+    ctx.fillStyle = "white";
+    ctx.font = "20px Arial";
+    ctx.fillText("Score: " + score, 10, 30);
+}
+
+document.addEventListener("keydown", function(event) {
+    const keyPressed = event.key.toLowerCase();
+    switch(keyPressed) {
+        case "w":
+            if (dy === 0) {
+                dx = 0;
+                dy = -1;
+            }
+            break;
+        case "s":
+            if (dy === 0) {
+                dx = 0;
+                dy = 1;
+            }
+            break;
+        case "a":
+            if (dx === 0) {
+                dx = -1;
+                dy = 0;
+            }
+            break;
+        case "d":
+            if (dx === 0) {
+                dx = 1;
+                dy = 0;
+            }
+            break;
+    }
+});
+
+function gameOver() {
+    clearInterval(gameInterval);
+    scoreForm.style.display = "block";
+    form.addEventListener("submit", function(e) {
+        e.preventDefault();
+        const playerName = playerNameInput.value.trim();
+        if (playerName) {
+            highScores.push({ name: playerName, score: score });
+            highScores.sort((a, b) => b.score - a.score);
+            if (highScores.length > 50) {
+                highScores.pop();
+            }
+            displayHighScores();
+        }
+        resetGame();
+    });
+}
+
+function resetGame() {
+    gameRunning = false;
+    startButton.style.display = "block";
+    clearCanvas();
+}
+
+function displayHighScores() {
+    scoreboardBody.innerHTML = "";
+    let rank = 1;
+    let prevScore = null;
+
+    highScores.forEach((highScore, index) => {
+        if (index < 50 && (prevScore === null || highScore.score !== prevScore)) {
+            const row = document.createElement("tr");
+            const rankCell = document.createElement("td");
+            const nameCell = document.createElement("td");
+            const scoreCell = document.createElement("td");
+            
+            rankCell.textContent = rank;
+            nameCell.textContent = highScore.name;
+            scoreCell.textContent = highScore.score;
+            
+            row.appendChild(rankCell);
+            row.appendChild(nameCell);
+            row.appendChild(scoreCell);
+            
+            scoreboardBody.appendChild(row);
+            rank++;
+            prevScore = highScore.score;
+        }
+    });
+}
+
+});
+</script>
+</body>
+</html>
